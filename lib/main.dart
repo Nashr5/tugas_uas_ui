@@ -36,13 +36,6 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
       Uri.parse('https://dummyjson.com/products'),
     );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        products = data['products'];
-        isLoading = false;
-      });
-    }
   }
 
   @override
