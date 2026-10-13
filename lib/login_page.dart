@@ -38,7 +38,7 @@ class _LoginPageState extends State<LoginPage> {
                       child: const Icon(
                         Icons.local_mall_rounded,
                         size: 64,
-                        color: Colors.orange,
+                        color: Color.fromARGB(255, 0, 218, 234),
                       ),
                     ),
                     const SizedBox(height: 12),
