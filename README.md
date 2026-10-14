@@ -13,4 +13,8 @@ Kita memiliki 5 Anggota:
 - Ikhsan
 - M.Reiza
 
+## Update Progress
+- Login (tampilan)
+- Register (tampilan)
+
 Bismillah semoga bisa selesai dan tidak satresss 😁
