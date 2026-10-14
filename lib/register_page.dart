@@ -104,7 +104,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Buat akun untuk mulai berbelanja di ShopEase',
+                      'Buat akun untuk mulai berbelanja di BeliKita',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 14,
@@ -307,14 +307,14 @@ class _RegisterPageState extends State<RegisterPage> {
               ],
             ),
             child: const Icon(
-              Icons.local_mall_rounded,
-              size: 64,
-              color: Color.fromARGB(255, 0, 218, 234),
+              Icons.shopping_bag_rounded,
+              size: 52,
+              color: _primary,
             ),
           ),
           const SizedBox(height: 12),
           const Text(
-            'ShopEase',
+            'BeliKita',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w800,
