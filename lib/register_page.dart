@@ -32,11 +32,29 @@ class _RegisterPageState extends State<RegisterPage> {
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Daftar Akun Baru',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+
+        children: [
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange[50],
+                shape: BoxShape.circle,
               ),
+              child: const Icon(
+                Icons.local_mall_rounded,
+                size: 64,
+                color: Color.fromARGB(255, 0, 218, 234),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // JUDUL REGISTER
+          const Text(
+            'Daftar Akun Baru',
+            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+          ),
               const SizedBox(height: 8),
               Text(
                 'Buat akun untuk mulai berbelanja di ShopEase',
