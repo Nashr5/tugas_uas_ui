@@ -286,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'ShopEase',
+            'Belikita',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w800,
