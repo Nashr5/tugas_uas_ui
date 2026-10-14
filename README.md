@@ -1,17 +1,16 @@
 # tugas_uas_ui
 
-A new Flutter project.
+Tugas PPB Membuat Aplikasi (E-Commerce)
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+Kita memulai project ini untuk tugas akhir dari Matkul PPB (Program Perangkat Bergerak)
 
-A few resources to get you started if this is your first Flutter project:
+Kita memiliki 5 Anggota:
+- M.Nashrudin
+- Abi Bintara
+- Aditya
+- Ikhsan
+- M.Reiza
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+Bismillah semoga bisa selesai dan tidak satresss 😁
