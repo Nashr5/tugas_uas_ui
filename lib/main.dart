@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ShopEase App',
+      title: 'ShopEase E-Commerce',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2962FF)),
@@ -21,4 +21,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-// update kontributor
