@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -61,10 +62,9 @@ class _LoginPageState extends State<LoginPage> {
 
   void _login() {
     if (_formKey.currentState!.validate()) {
-      // Tambahkan logika navigasi ke Katalog disini
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Berhasil masuk!')),
-      );
+      // Logika navigasi
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Berhasil masuk!')));
     }
   }
 
@@ -86,7 +86,10 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     const Text(
                       'Selamat Datang!',
-                      style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -115,7 +118,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Kata Sandi
+                    // Kata Sandi/Password
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscureText,
@@ -152,29 +155,32 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Tombol Masuk
+                    // Tombol Masuk/Login
                     SizedBox(
                       height: 54,
-                      child: ElevatedButton(
+                      child: ElevatedButton.icon(
                         onPressed: _login,
+                        icon: const Icon(
+                          Icons.login_rounded,
+                          color: Colors.white,
+                        ),
+                        label: const Text(
+                          'Masuk',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
-                          foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Masuk',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
                       ),
                     ),
-                    const SizedBox(height: 24),
 
                     // Pemisah
                     Row(
@@ -192,12 +198,12 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Tombol Google (placeholder)
+                    // Tombol Google
                     SizedBox(
                       height: 54,
                       child: OutlinedButton.icon(
                         onPressed: () {},
-                        icon: const Icon(Icons.g_mobiledata, size: 32),
+                        icon: const Icon(Icons.g_mobiledata, size: 34),
                         label: const Text('Lanjutkan dengan Google'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.black87,
@@ -210,7 +216,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Navigasi ke Daftar
+                    // Navigasi Daftar
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -297,10 +303,7 @@ class _LoginPageState extends State<LoginPage> {
           const SizedBox(height: 4),
           Text(
             'Belanja jadi lebih mudah',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withAlpha(217),
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.white.withAlpha(217)),
           ),
         ],
       ),

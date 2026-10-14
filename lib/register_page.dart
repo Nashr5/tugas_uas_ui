@@ -107,7 +107,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       'Buat akun untuk mulai berbelanja di BeliKita',
                       style: TextStyle(
                         color: Colors.grey[600],
-                        fontSize: 14,
+                        fontSize: 15,
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -121,7 +121,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       validator: (value) =>
                           value == null || value.trim().isEmpty
-                              ? 'Nama wajib diisi'
+                              ? 'Nama wajib diisi!'
                               : null,
                     ),
                     const SizedBox(height: 16),
@@ -135,7 +135,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Email wajib diisi';
+                          return 'Email wajib diisi!';
                         }
                         if (!value.contains('@')) {
                           return 'Format email tidak valid';
