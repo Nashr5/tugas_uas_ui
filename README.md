@@ -10,7 +10,7 @@ Kita memiliki 5 Anggota:
 - M.Nashrudin
 - Abi Bintara
 - Aditya
-- Ikhsan
+- M.Ikhsan (Project Manager)
 - M.Reiza
 
 ## Update Progress
