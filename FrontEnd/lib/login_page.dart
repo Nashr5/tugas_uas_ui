@@ -292,7 +292,7 @@ class _LoginPageState extends State<LoginPage> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Belisaja',
+            'BeliKita',
             style: TextStyle(
               fontSize: 32,
               fontWeight: FontWeight.w800,
