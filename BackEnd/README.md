@@ -1,259 +1,201 @@
-# Services Product API
+# Belikita Backend API (Docker Compose)
 
-Konfigurasi ini menjalankan API PHP untuk data produk DummyJSON menggunakan Docker Compose.
+Backend service untuk aplikasi mobile e-commerce **Belikita** (Tugas Besar Pemrograman Perangkat Bergerak / PPB). Service ini dijalankan menggunakan **Docker Compose** dan menyediakan REST API untuk autentikasi **Google Authenticator (TOTP)**, operasi **CRUD Produk**, serta database **MySQL** dengan antarmuka **phpMyAdmin**.
 
-## Arsitektur
+---
 
-Service yang tersedia:
+## 🏛️ Arsitektur Service
 
-- **PHP-FPM**: menjalankan API PHP dan koneksi ke MySQL.
-- **Caddy**: web server dan reverse proxy ke PHP-FPM.
-- **MySQL**: menyimpan data produk pada folder `databases`.
-- **phpMyAdmin**: antarmuka web untuk mengelola MySQL.
-- **RabbitMQ**: message broker dengan dashboard management.
+Stack backend terdiri dari:
 
-Source code PHP berada di folder `htdocs` dan document root Caddy mengarah ke folder tersebut.
+- **PHP 8.3 FPM**: Menjalankan REST API PHP, kalkulasi TOTP Google Authenticator, dan koneksi ke MySQL via PDO.
+- **Caddy 2**: Web server modern dan reverse proxy berkinerja tinggi ke PHP-FPM, dengan konfigurasi CORS siap pakai untuk Flutter.
+- **MySQL 8.4 LTS**: Database relasional untuk menyimpan tabel `products` (data persisten disimpan di folder `databases/`).
+- **phpMyAdmin**: Web GUI untuk mengelola database dan melihat tabel secara visual.
 
-## Konfigurasi
+---
 
-File `.env` berisi kredensial MySQL. Konfigurasi Google Authenticator bersifat
-opsional karena secret dan account dapat dibuat otomatis:
+## 🔑 Informasi Akses & Akun
+
+| Service | Host / URL | Port | Kredensial Login |
+|---|---|---|---|
+| **API Backend & Web Login** | `http://localhost:8080` | `8080` | - |
+| **phpMyAdmin** | `http://localhost:8081` | `8081` | User: `app` / Pass: `app_secret`<br>Root: `root` / Pass: `root_secret` |
+| **MySQL Database** | `localhost` (atau `mysql` antar-container) | `3306` | Database: `app`<br>User: `app` / Pass: `app_secret` |
+
+> 💡 **Koneksi dari Flutter:**
+> - **Windows Desktop / Chrome (Web):** Gunakan `http://localhost:8080`
+> - **Android Emulator:** Gunakan `http://10.0.2.2:8080` (karena `localhost` di emulator mengarah ke emulator itu sendiri)
+> - **HP Fisik (USB Debugging):** Gunakan IP Wi-Fi laptop Anda (misal `http://192.168.1.xxx:8080`)
+
+---
+
+## ⚙️ Konfigurasi Environment (`.env`)
+
+File `.env` sudah disediakan pada folder ini dengan konfigurasi standar:
 
 ```dotenv
+# Database MySQL
+MYSQL_DATABASE=app
 MYSQL_USER=app
 MYSQL_PASSWORD=app_secret
 MYSQL_ROOT_PASSWORD=root_secret
-# GOOGLE2FA_SECRET=isi_secret_base32_persisten_jika_diperlukan
-# GOOGLE2FA_ACCOUNT=admin@localhost
-GOOGLE2FA_ISSUER='Products API'
+
+# Google Authenticator / TOTP
+GOOGLE2FA_ACCOUNT=admin@belikita.com
+GOOGLE2FA_ISSUER='Belikita'
 ```
 
-Ubahlah nilai tersebut sebelum digunakan di lingkungan production.
+---
 
-## Instalasi Composer dan Library
+## 🚀 Cara Menjalankan
 
-Library API autentikasi didefinisikan di `htdocs/composer.json`:
-
-- `pragmarx/google2fa`: membuat dan memverifikasi kode TOTP Google Authenticator.
-- `bacon/bacon-qr-code`: membuat QR code SVG untuk setup authenticator.
-
-Pada penggunaan Docker, dependency di-install otomatis saat image PHP dibuat:
-
-```bash
-docker compose build --no-cache php
-docker compose up -d
-```
-
-Untuk meng-install atau memperbarui dependency pada container yang sudah
-berjalan:
-
-```bash
-docker compose run --rm php composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader
-```
-
-Dependency disimpan pada volume `php-vendor-v2`, sedangkan secret otomatis
-disimpan pada volume `php-data`.
-
-## Menjalankan Service
-
-Dari folder ini, jalankan:
-
+### 1. Menjalankan Container
+Buka terminal di folder `BackEnd`:
 ```bash
 docker compose up -d --build
 ```
 
-Melihat status container:
-
+### 2. Memeriksa Status Container
 ```bash
 docker compose ps
 ```
 
-Melihat log API PHP:
-
+### 3. Melihat Log API
 ```bash
 docker compose logs -f php
 ```
 
-Menghentikan service:
-
-```bash
-docker compose down
-```
-
-Data MySQL tetap tersimpan di folder `databases` saat container dihentikan.
-
-## Import Data DummyJSON
-
-Script seed mengambil seluruh data produk menggunakan endpoint:
-
-```text
-https://dummyjson.com/products?limit=0
-```
-
-Jalankan seed secara manual:
-
+### 4. Import / Seed Data Contoh Produk (DummyJSON)
+Tabel `products` akan otomatis dibuat saat endpoint diakses. Untuk mengisinya dengan data katalog produk:
 ```bash
 docker compose exec php php /var/www/html/seed.php
 ```
 
-Script aman dijalankan berulang kali karena menggunakan `ON DUPLICATE KEY UPDATE` berdasarkan `id` produk.
-
-API hanya membuat tabel jika belum tersedia. Pengisian data DummyJSON dilakukan melalui script seed secara manual.
-
-## Akses Service
-
-| Service | URL atau host |
-| --- | --- |
-| API PHP melalui Caddy | http://localhost:8080 |
-| phpMyAdmin | http://localhost:8081 |
-| MySQL dari host | `localhost:3306` |
-| RabbitMQ AMQP dari host | `localhost:5672` |
-| RabbitMQ Management | http://localhost:15672 |
-
-Untuk koneksi antar-container, gunakan host berikut:
-
-- MySQL: `mysql:3306`
-- RabbitMQ: `rabbitmq:5672`
-
-## API Produk
-
-Semua endpoint API menggunakan prefix `/products`.
-
-| Method | Endpoint | Keterangan |
-| --- | --- | --- |
-| `GET` | `/products` | Mengambil daftar produk |
-| `GET` | `/products/{id}` | Mengambil satu produk |
-| `GET` | `/products/search?q=phone` | Mencari produk |
-| `GET` | `/products/category/{category}` | Filter berdasarkan kategori |
-| `GET` | `/products/categories` | Mengambil daftar kategori beserta URL |
-| `GET` | `/products/category-list` | Mengambil daftar slug kategori |
-| `POST` | `/products/add` | Menambahkan produk |
-| `PUT` | `/products/{id}` | Mengubah produk |
-| `PATCH` | `/products/{id}` | Mengubah sebagian atau seluruh produk |
-| `DELETE` | `/products/{id}` | Menghapus produk |
-
-### Query Parameter List
-
-Endpoint `GET /products` mendukung:
-
-- `q`: kata pencarian.
-- `limit`: jumlah data, default `30`. Gunakan `0` untuk mengambil semua data.
-- `skip`: jumlah data yang dilewati.
-- `sortBy`: `id`, `title`, `price`, `rating`, atau `stock`.
-- `order`: `asc` atau `desc`.
-
-Contoh:
-
-```text
-GET http://localhost:8080/products?limit=10&skip=0&sortBy=price&order=desc
-GET http://localhost:8080/products?q=phone
-GET http://localhost:8080/products/category/smartphones
-```
-
-### Contoh Tambah Produk
-
+### 5. Menghentikan Service
 ```bash
-curl -X POST http://localhost:8080/products/add \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "title": "Produk Baru",
-    "description": "Deskripsi produk",
-    "category": "laptops",
-    "price": 899.99,
-    "stock": 20,
-    "brand": "Contoh"
-  }'
+docker compose down
 ```
+*(Data database tetap tersimpan dengan aman di folder `databases/`)*.
 
-### Contoh Update Produk
+---
 
-```bash
-curl -X PATCH http://localhost:8080/products/1 \
-  -H 'Content-Type: application/json' \
-  -d '{"price": 799.99, "stock": 25}'
-```
+## 🔐 Autentikasi Google Authenticator (TOTP)
 
-### Contoh Hapus Produk
+### Cara 1: Menggunakan Tampilan Web Bawaan
+1. Buka browser ke: `http://localhost:8080/`
+2. Buka aplikasi **Google Authenticator** di HP Anda.
+3. Scan QR Code yang tampil di layar (atau masukkan Secret Key secara manual).
+4. Masukkan kode 6 digit yang muncul di Google Authenticator lalu klik **Login**.
 
-```bash
-curl -X DELETE http://localhost:8080/products/1
-```
+### Cara 2: Integrasi ke Aplikasi Flutter (REST API)
 
-## Login Google Authenticator
+#### A. Mendapatkan Setup QR Code & Secret Key
+- **Method:** `GET`
+- **Endpoint:** `http://localhost:8080/login`
+- **Response:**
+  ```json
+  {
+    "issuer": "Belikita",
+    "account": "admin@belikita.com",
+    "secret": "JBSWY3DPEHPK3PXP...",
+    "otp_auth_url": "otpauth://totp/Belikita:admin@belikita.com?secret=...",
+    "qr_code": "<svg ...></svg>"
+  }
+  ```
 
-### 1. Membuat konfigurasi authenticator
+#### B. Memverifikasi Kode 6 Digit
+- **Method:** `POST`
+- **Endpoint:** `http://localhost:8080/login`
+- **Headers:** `Content-Type: application/json`
+- **Body:**
+  ```json
+  {
+    "code": "123456"
+  }
+  ```
+- **Response Berhasil (HTTP 200):**
+  ```json
+  {
+    "authenticated": true,
+    "message": "Authentication successful."
+  }
+  ```
+- **Response Gagal (HTTP 401):**
+  ```json
+  {
+    "message": "Invalid authentication code."
+  }
+  ```
 
-Jalankan service, lalu panggil endpoint berikut:
+---
 
-```http
-GET http://localhost:8080/login
-```
+## 📦 REST API CRUD Produk
 
-Response berisi `secret`, `account`, `issuer`, `otp_auth_url`, dan `qr_code`.
-Tambahkan akun tersebut ke aplikasi Google Authenticator dengan salah satu cara:
+Semua endpoint produk beralamat di `/products`:
 
-- Scan nilai `qr_code` sebagai QR code SVG.
-- Pilih **Enter setup key** di Google Authenticator, lalu masukkan nilai
-  `secret` dan gunakan tipe **Time-based**.
+| Aksi | Method | Endpoint | Deskripsi |
+|---|---|---|---|
+| **Get All** | `GET` | `/products` | Daftar semua produk (mendukung pagination & sorting) |
+| **Get Detail** | `GET` | `/products/{id}` | Detail produk berdasarkan ID |
+| **Search** | `GET` | `/products/search?q={keyword}` | Pencarian produk berdasarkan nama/kategori |
+| **Filter Kategori** | `GET` | `/products/category/{category}` | Filter produk berdasarkan kategori |
+| **List Kategori** | `GET` | `/products/categories` | Daftar semua kategori |
+| **Create (Add)** | `POST` | `/products/add` | Tambah produk baru |
+| **Update** | `PUT` / `PATCH` | `/products/{id}` | Update sebagian atau seluruh data produk |
+| **Delete** | `DELETE` | `/products/{id}` | Hapus produk dari database |
 
-Jika `GOOGLE2FA_SECRET` tidak diisi, aplikasi membuat secret 32 karakter secara
-otomatis pada request pertama dan menyimpannya secara persisten di volume
-`php-data`. Secret yang sudah tersimpan dan panjangnya kurang dari 32 karakter
-akan dibuat ulang.
+### Contoh Request CRUD
 
-### 2. Verifikasi kode login
-
-Ambil kode 6 digit dari Google Authenticator, lalu kirim request berikut:
-
-```bash
-curl -X POST http://localhost:8080/login \
-  -H 'Content-Type: application/json' \
-  -d '{"code":"123456"}'
-```
-
-Response berhasil:
-
+#### 1. Tambah Produk (`POST /products/add`)
 ```json
 {
-  "authenticated": true,
-  "message": "Authentication successful."
+  "title": "Kemeja Polos Pria",
+  "description": "Kemeja bahan katun premium nyaman dipakai",
+  "category": "mens-shirts",
+  "price": 149000,
+  "stock": 25,
+  "brand": "Belikita Cloth"
 }
 ```
 
-Di Postman, gunakan `POST /login`, pilih **Body > raw > JSON**, lalu kirim
-`{"code":"123456"}`. Ganti kode contoh dengan kode aktif dari authenticator.
+#### 2. Update Produk (`PATCH /products/1`)
+```json
+{
+  "price": 129000,
+  "stock": 30
+}
+```
 
-Endpoint login saat ini memverifikasi TOTP, tetapi belum membuat JWT atau
-session token untuk membatasi endpoint produk.
+#### 3. Parameter Query `GET /products`
+- `q`: Kata kunci pencarian.
+- `limit`: Jumlah item (default `30`, `0` untuk semua).
+- `skip`: Offset data.
+- `sortBy`: `id`, `title`, `price`, `rating`, `stock`.
+- `order`: `asc` atau `desc`.
 
-## Login phpMyAdmin
+Contoh: `GET http://localhost:8080/products?limit=10&sortBy=price&order=desc`
 
-Buka `http://localhost:8081`, lalu gunakan:
+---
 
-- **Server**: `mysql`
-- **Username**: nilai `MYSQL_USER` atau `root`
-- **Password**: nilai `MYSQL_PASSWORD` atau `MYSQL_ROOT_PASSWORD`
-
-Nama database yang digunakan adalah `app`, dan tabel produk bernama `products`.
-
-## Struktur Folder
+## 📁 Struktur Direktori Backend
 
 ```text
-services/
-├── .env
-├── Caddyfile
-├── Dockerfile
-├── docker-compose.yaml
-├── databases/
-└── htdocs/
-  ├── Config.php
-  ├── Rest.php
-  ├── composer.json
-  ├── controller/
-  │   ├── AuthController.php
-  │   └── ProductController.php
-    ├── index.php
-  ├── models/
-  ├── routes/
-    └── seed.php
+BackEnd/
+├── .env                  # Konfigurasi environment (kredensial DB & 2FA)
+├── .env.example          # Template konfigurasi environment
+├── Caddyfile             # Konfigurasi reverse proxy Caddy
+├── Dockerfile            # Image build PHP 8.3 FPM + Extensions
+├── docker-compose.yaml   # Konfigurasi orkestrasi container
+├── README.md             # Dokumentasi Backend
+├── databases/            # Folder penyimpanan file data MySQL
+└── htdocs/               # Kode sumber aplikasi PHP
+    ├── Config.php        # Konfigurasi koneksi PDO & Google2FA
+    ├── Rest.php          # Helper response JSON & CORS
+    ├── index.php         # Entry point aplikasi
+    ├── seed.php          # Script seeder data DummyJSON
+    ├── controller/       # AuthController & ProductController
+    ├── models/           # Product model
+    ├── routes/           # Routing API (api.php)
+    └── views/            # Halaman Web Login (LoginView.php)
 ```
