@@ -146,9 +146,9 @@ class ApiService {
     }
   }
 
-  /// Mengambil daftar kategori dari database MySQL.
-  static Future<List<Map<String, dynamic>>> getCategories() async {
-    final uri = Uri.parse('$baseUrl/products/categories');
+  /// Mengambil daftar produk dari database MySQL (opsional untuk ditampilkan setelah login).
+  static Future<List<dynamic>> getProducts() async {
+    final uri = Uri.parse('$baseUrl/products?limit=10');
     try {
       final response = await http
           .get(
@@ -156,52 +156,6 @@ class ApiService {
             headers: {'Accept': 'application/json'},
           )
           .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data is List) {
-          return data
-              .map((item) => Map<String, dynamic>.from(item as Map))
-              .toList();
-        }
-      }
-    } catch (_) {}
-    return [];
-  }
-
-  /// Mengambil daftar produk dengan fitur pencarian (q), filter kategori, dan pengurutan (sortBy, order).
-  static Future<List<dynamic>> getProducts({
-    String? q,
-    String? category,
-    String? sortBy,
-    String? order,
-    int limit = 50,
-  }) async {
-    final queryParams = <String, String>{
-      'limit': limit.toString(),
-    };
-    if (q != null && q.trim().isNotEmpty) {
-      queryParams['q'] = q.trim();
-    }
-    if (category != null && category.trim().isNotEmpty && category != 'all') {
-      queryParams['category'] = category.trim();
-    }
-    if (sortBy != null && sortBy.trim().isNotEmpty) {
-      queryParams['sortBy'] = sortBy.trim();
-    }
-    if (order != null && order.trim().isNotEmpty) {
-      queryParams['order'] = order.trim();
-    }
-
-    final uri = Uri.parse('$baseUrl/products').replace(queryParameters: queryParams);
-
-    try {
-      final response = await http
-          .get(
-            uri,
-            headers: {'Accept': 'application/json'},
-          )
-          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
