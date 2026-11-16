@@ -1,5 +1,7 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -18,6 +20,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _obscureText = true;
   bool _agreeToTerms = false;
+
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8080';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
+    return 'http://localhost:8080';
+  }
 
   static const _primary = Color(0xFF2962FF);
   static const _primaryDark = Color(0xFF0039CB);
@@ -83,7 +91,7 @@ class _RegisterPageState extends State<RegisterPage> {
   );
 
   try {
-    final url = Uri.parse('http://localhost:8080/register');
+    final url = Uri.parse('$_baseUrl/register');
 
     final response = await http.post(
       url,
@@ -97,6 +105,8 @@ class _RegisterPageState extends State<RegisterPage> {
         'password': _passwordController.text.trim(),
       }),
     );
+
+    if (!mounted) return;
 
     // Tutup loading dialog
     Navigator.pop(context);
@@ -122,6 +132,7 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     }
   } catch (e) {
+    if (!mounted) return;
     // Tutup loading dialog jika terjadi exception/error koneksi
     Navigator.pop(context);
     

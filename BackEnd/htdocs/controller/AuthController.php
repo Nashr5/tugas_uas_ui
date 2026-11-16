@@ -90,6 +90,20 @@ final class AuthController
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             ]);
 
+            // Buat tabel users secara otomatis jika belum tersedia
+            $db->exec(<<<'SQL'
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    phone VARCHAR(50) NULL,
+                    password VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    UNIQUE KEY users_email_unique (email)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            SQL);
+
             // Cek apakah email sudah terdaftar di database
             $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
             $stmt->execute([$email]);
