@@ -12,7 +12,7 @@ function registerApiRoutes(ProductController $controller, AuthController $authCo
     if ($segments === ['login'] && $method === 'GET') {
         $authController->setup();
     }
-    // POST /login - verifikasi kode 6 digit Google Authenticator
+    // POST /login - login dengan email & password atau verifikasi 6 digit TOTP.
     if ($segments === ['login'] && $method === 'POST') {
         $authController->login();
     }
@@ -20,7 +20,7 @@ function registerApiRoutes(ProductController $controller, AuthController $authCo
         fail('Method not allowed.', 405);
     }
 
-    // POST /register - pendaftaran akun baru dari Flutter.
+    // POST /register - pendaftaran akun baru ke database MySQL.
     if ($segments === ['register'] && $method === 'POST') {
         $authController->register();
     }
@@ -28,7 +28,7 @@ function registerApiRoutes(ProductController $controller, AuthController $authCo
         fail('Method not allowed.', 405);
     }
 
-    // GET / - halaman login
+    // GET / - halaman login.
     if ($segments === [] && $method === 'GET') {
         header('Content-Type: text/html; charset=utf-8');
         require __DIR__ . '/../views/LoginView.php';

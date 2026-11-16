@@ -4,6 +4,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'api_service.dart';
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -20,6 +22,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _obscureText = true;
   bool _agreeToTerms = false;
+  bool _isLoading = false;
 
   String get _baseUrl {
     if (kIsWeb) return 'http://localhost:8080';
@@ -46,7 +49,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: _primaryDark),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.grey[100],
@@ -284,7 +287,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _agreeToTerms ? _register : null,
+                        onPressed: _isLoading || !_agreeToTerms
+                            ? null
+                            : _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           foregroundColor: Colors.white,
@@ -294,13 +299,22 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Daftar',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'Daftar',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 24),
