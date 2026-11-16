@@ -1,7 +1,9 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
-import 'api_service.dart';
-import 'home_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -15,17 +17,151 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _obscureText = true;
   bool _isLoading = false;
 
+  // Warna tema
   static const _primary = Color(0xFF78A4CB);
   static const _primaryDark = Color(0xFF5A86AD);
+
+  // Alamat Backend (Otomatis mendeteksi Platform)
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8080';
+    try {
+      if (Platform.isAndroid) return 'http://10.0.2.2:8080'; // Android Emulator
+    } catch (_) {}
+    return 'http://localhost:8080'; // Windows / Linux / macOS
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Fungsi Login langsung ke Backend & Database MySQL
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    try {
+      final url = Uri.parse('$_baseUrl/login');
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Berhasil mengambil & mencocokkan data dari database MySQL
+        final user = data['user'] ?? {};
+        final userName = user['name'] ?? 'Pengguna';
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 8),
+                Text('Berhasil Masuk'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selamat datang, $userName!',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('Email: ${user['email'] ?? email}'),
+                if (user['phone'] != null) Text('No. HP: ${user['phone']}'),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: const Text(
+                    'Data berhasil diverifikasi dari Database MySQL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Gagal login (email atau password tidak cocok di database)
+        final errorMsg =
+            data['message'] ?? 'Email atau kata sandi tidak sesuai.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal terhubung ke backend ($_baseUrl).\nPastikan Docker backend sudah jalan.',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   InputDecoration _inputDecoration({
@@ -63,101 +199,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    final result = await ApiService.login(
-      email: _emailController.text,
-      password: _passwordController.text,
-    );
-
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-
-    if (result['success'] == true) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Berhasil masuk!'),
-          backgroundColor: Colors.green[700],
-        ),
-      );
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomePage(user: result['user']),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result['message'] ?? 'Gagal masuk.'),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 4),
-          action: SnackBarAction(
-            label: 'Atur Server',
-            textColor: Colors.white,
-            onPressed: _showServerSettingsDialog,
-          ),
-        ),
-      );
-    }
-  }
-
-  void _showServerSettingsDialog() {
-    final controller = TextEditingController(text: ApiService.baseUrl);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Pengaturan Alamat Server'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Sesuaikan alamat backend jika Anda menggunakan HP fisik atau emulator:',
-              style: TextStyle(fontSize: 13, color: Colors.black87),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                labelText: 'URL Backend',
-                hintText: 'Contoh: http://192.168.1.10:8080',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '• Web/Desktop: http://localhost:8080\n• Android Emulator: http://10.0.2.2:8080\n• HP Fisik: http://<IP_Laptop>:8080',
-              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              ApiService.customBaseUrl = '';
-              Navigator.pop(context);
-              setState(() {});
-            },
-            child: const Text('Reset Default'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              ApiService.customBaseUrl = controller.text.trim();
-              Navigator.pop(context);
-              setState(() {});
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -174,31 +215,21 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Selamat Datang!',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.settings_outlined, size: 20),
-                          tooltip: 'Pengaturan Server Backend',
-                          onPressed: _showServerSettingsDialog,
-                        ),
-                      ],
+                    const Text(
+                      'Selamat Datang!',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       'Masuk untuk lanjut belanja produk favoritmu',
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
                     ),
                     const SizedBox(height: 28),
 
-                    // Email
+                    // Input Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -218,7 +249,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Kata Sandi/Password
+                    // Input Kata Sandi
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscureText,
@@ -255,7 +286,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Tombol Masuk/Login
+                    // Tombol Masuk
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
@@ -297,7 +328,6 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
 
-                    // Pemisah
                     const SizedBox(height: 20),
                     Row(
                       children: [
@@ -332,7 +362,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Navigasi Daftar
+                    // Link Daftar Akun
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

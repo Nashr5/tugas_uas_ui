@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'api_service.dart';
-import 'catalog_page.dart';
-import 'categories_page.dart';
 import 'login_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,26 +16,20 @@ class _HomePageState extends State<HomePage> {
   static const _primaryDark = Color(0xFF5A86AD);
 
   List<dynamic> _products = [];
-  List<Map<String, dynamic>> _categories = [];
-  bool _isLoading = true;
+  bool _isLoadingProducts = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
+    _fetchProducts();
   }
 
-  Future<void> _fetchData() async {
-    final results = await Future.wait([
-      ApiService.getProducts(limit: 6),
-      ApiService.getCategories(),
-    ]);
-
+  Future<void> _fetchProducts() async {
+    final products = await ApiService.getProducts();
     if (mounted) {
       setState(() {
-        _products = results[0] as List<dynamic>;
-        _categories = results[1] as List<Map<String, dynamic>>;
-        _isLoading = false;
+        _products = products;
+        _isLoadingProducts = false;
       });
     }
   }
@@ -73,19 +65,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  IconData _getCategoryIcon(String slug) {
-    final s = slug.toLowerCase();
-    if (s.contains('beauty') || s.contains('skin')) return Icons.face_retouching_natural;
-    if (s.contains('fragrance')) return Icons.spa_outlined;
-    if (s.contains('furniture')) return Icons.chair_outlined;
-    if (s.contains('grocer') || s.contains('food')) return Icons.local_grocery_store_outlined;
-    if (s.contains('laptop') || s.contains('computer')) return Icons.laptop_mac_outlined;
-    if (s.contains('shirt') || s.contains('cloth') || s.contains('dress')) return Icons.checkroom_outlined;
-    if (s.contains('phone')) return Icons.phone_android_outlined;
-    if (s.contains('watch')) return Icons.watch_outlined;
-    return Icons.category_outlined;
-  }
-
   @override
   Widget build(BuildContext context) {
     final userName = widget.user?['name'] ?? 'Pengguna';
@@ -103,26 +82,6 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.category_outlined, color: Colors.white),
-            tooltip: 'Semua Kategori',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CategoriesPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.storefront_outlined, color: Colors.white),
-            tooltip: 'Katalog Produk',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const CatalogPage()),
-              );
-            },
-          ),
-          IconButton(
             icon: const Icon(Icons.logout_rounded, color: Colors.white),
             tooltip: 'Keluar',
             onPressed: _logout,
@@ -130,62 +89,13 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _fetchData,
+        onRefresh: _fetchProducts,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Search Bar Shortcut menuju Halaman Katalog (Tugas Abi)
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const CatalogPage()),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(15),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.search, color: _primary),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Cari produk atau filter kategori...',
-                        style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: _primary.withAlpha(25),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.tune_rounded,
-                          size: 18,
-                          color: _primaryDark,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
               // Kartu Profil Pengguna dari Database
               Container(
                 padding: const EdgeInsets.all(20),
@@ -210,18 +120,20 @@ class _HomePageState extends State<HomePage> {
                     Row(
                       children: [
                         CircleAvatar(
-                          radius: 26,
+                          radius: 28,
                           backgroundColor: Colors.white,
                           child: Text(
-                            userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : 'U',
                             style: const TextStyle(
-                              fontSize: 24,
+                              fontSize: 26,
                               fontWeight: FontWeight.bold,
                               color: _primaryDark,
                             ),
                           ),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -230,16 +142,16 @@ class _HomePageState extends State<HomePage> {
                                 userName,
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 18,
+                                  fontSize: 20,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              const SizedBox(height: 2),
+                              const SizedBox(height: 4),
                               Text(
                                 userEmail,
                                 style: TextStyle(
                                   color: Colors.white.withAlpha(220),
-                                  fontSize: 13,
+                                  fontSize: 14,
                                 ),
                               ),
                             ],
@@ -247,22 +159,22 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     const Divider(color: Colors.white30),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         const Icon(
                           Icons.phone_android_rounded,
                           color: Colors.white70,
-                          size: 16,
+                          size: 18,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 8),
                         Text(
                           'No. HP: $userPhone',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 13,
                           ),
                         ),
                         const Spacer(),
@@ -281,7 +193,7 @@ class _HomePageState extends State<HomePage> {
                               Icon(
                                 Icons.check_circle,
                                 color: Colors.lightGreenAccent,
-                                size: 12,
+                                size: 14,
                               ),
                               SizedBox(width: 4),
                               Text(
@@ -301,131 +213,25 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // Bagian Kategori Produk (Fitur Abi)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Kategori Produk',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CategoriesPage()),
-                      );
-                    },
-                    icon: const Text('Lihat Semua', style: TextStyle(fontSize: 13, color: _primaryDark, fontWeight: FontWeight.bold)),
-                    label: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _primaryDark),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-
-              if (_isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(20),
-                    child: CircularProgressIndicator(color: _primary),
-                  ),
-                )
-              else if (_categories.isNotEmpty)
-                SizedBox(
-                  height: 100,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: _categories.length,
-                    itemBuilder: (context, index) {
-                      final cat = _categories[index];
-                      final slug = cat['slug'] ?? '';
-                      final name = cat['name'] ?? slug;
-                      final icon = _getCategoryIcon(slug);
-
-                      return GestureDetector(
-                        onTap: () {
-                          // Navigasi langsung ke katalog dengan filter kategori
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => CatalogPage(
-                                initialCategory: slug,
-                                initialCategoryName: name,
-                              ),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          width: 80,
-                          margin: const EdgeInsets.only(right: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withAlpha(8),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: _primary.withAlpha(25),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(icon, color: _primaryDark, size: 22),
-                              ),
-                              const SizedBox(height: 6),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4),
-                                child: Text(
-                                  name,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
 
               // Bagian Daftar Produk Database
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Katalog Produk',
+                    'Katalog Produk (MySQL)',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const CatalogPage()),
-                      );
-                    },
-                    icon: const Text('Buka Katalog', style: TextStyle(fontSize: 13, color: _primaryDark, fontWeight: FontWeight.bold)),
-                    label: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: _primaryDark),
+                  Text(
+                    '${_products.length} item',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
-              if (_isLoading)
+              if (_isLoadingProducts)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(40),
@@ -453,6 +259,14 @@ class _HomePageState extends State<HomePage> {
                           'Belum ada data produk di database.',
                           style: TextStyle(color: Colors.grey[600]),
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Jalankan seed.php di backend untuk mengisi produk.',
+                          style: TextStyle(
+                            color: Colors.grey[500],
+                            fontSize: 12,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -465,66 +279,54 @@ class _HomePageState extends State<HomePage> {
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final item = _products[index];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => CatalogPage(
-                              initialQuery: item['title'] ?? '',
-                            ),
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withAlpha(12),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                        );
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withAlpha(10),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
+                        ],
+                      ),
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
                         ),
-                        child: ListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
+                        leading: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: _primary.withAlpha(30),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: _primary.withAlpha(30),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.shopping_bag_outlined,
-                              color: _primary,
-                            ),
+                          child: const Icon(
+                            Icons.shopping_bag_outlined,
+                            color: _primary,
                           ),
-                          title: Text(
-                            item['title'] ?? 'Tanpa Nama',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        ),
+                        title: Text(
+                          item['title'] ?? 'Tanpa Nama',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          'Kategori: ${item['category'] ?? '-'}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 12,
                           ),
-                          subtitle: Text(
-                            'Kategori: ${item['category'] ?? '-'}',
-                            style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                          trailing: Text(
-                            '\$${item['price'] ?? 0}',
-                            style: const TextStyle(
-                              color: _primaryDark,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                            ),
+                        ),
+                        trailing: Text(
+                          '\$${item['price'] ?? 0}',
+                          style: const TextStyle(
+                            color: _primaryDark,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
                           ),
                         ),
                       ),
