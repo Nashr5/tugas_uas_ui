@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'api_service.dart';
+import 'home_page.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -14,9 +16,10 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscureText = true;
+  bool _isLoading = false;
 
-  static const _primary = Color(0xFF2962FF);
-  static const _primaryDark = Color(0xFF0039CB);
+  static const _primary = Color(0xFF78A4CB);
+  static const _primaryDark = Color(0xFF5A86AD);
 
   @override
   void dispose() {
@@ -32,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: _primaryDark),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.grey[100],
@@ -60,12 +63,99 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      // Logika navigasi
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Berhasil masuk!')));
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final result = await ApiService.login(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Berhasil masuk!'),
+          backgroundColor: Colors.green[700],
+        ),
+      );
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomePage(user: result['user']),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Gagal masuk.'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+          action: SnackBarAction(
+            label: 'Atur Server',
+            textColor: Colors.white,
+            onPressed: _showServerSettingsDialog,
+          ),
+        ),
+      );
     }
+  }
+
+  void _showServerSettingsDialog() {
+    final controller = TextEditingController(text: ApiService.baseUrl);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pengaturan Alamat Server'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sesuaikan alamat backend jika Anda menggunakan HP fisik atau emulator:',
+              style: TextStyle(fontSize: 13, color: Colors.black87),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'URL Backend',
+                hintText: 'Contoh: http://192.168.1.10:8080',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '• Web/Desktop: http://localhost:8080\n• Android Emulator: http://10.0.2.2:8080\n• HP Fisik: http://<IP_Laptop>:8080',
+              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              ApiService.customBaseUrl = '';
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Reset Default'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              ApiService.customBaseUrl = controller.text.trim();
+              Navigator.pop(context);
+              setState(() {});
+            },
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -84,14 +174,24 @@ class _LoginPageState extends State<LoginPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Text(
-                      'Selamat Datang!',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Selamat Datang!',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.settings_outlined, size: 20),
+                          tooltip: 'Pengaturan Server Backend',
+                          onPressed: _showServerSettingsDialog,
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       'Masuk untuk lanjut belanja produk favoritmu',
                       style: TextStyle(color: Colors.grey[600], fontSize: 14),
@@ -158,20 +258,8 @@ class _LoginPageState extends State<LoginPage> {
                     // Tombol Masuk/Login
                     SizedBox(
                       height: 54,
-                      child: ElevatedButton.icon(
-                        onPressed: _login,
-                        icon: const Icon(
-                          Icons.login_rounded,
-                          color: Colors.white,
-                        ),
-                        label: const Text(
-                          'Masuk',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           elevation: 0,
@@ -179,10 +267,38 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.login_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Masuk',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
 
                     // Pemisah
+                    const SizedBox(height: 20),
                     Row(
                       children: [
                         Expanded(child: Divider(color: Colors.grey[300])),
@@ -196,7 +312,7 @@ class _LoginPageState extends State<LoginPage> {
                         Expanded(child: Divider(color: Colors.grey[300])),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // Tombol Google
                     SizedBox(

@@ -1,5 +1,6 @@
-
 import 'package:flutter/material.dart';
+
+import 'api_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -17,9 +18,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _obscureText = true;
   bool _agreeToTerms = false;
+  bool _isLoading = false;
 
-  static const _primary = Color(0xFF2962FF);
-  static const _primaryDark = Color(0xFF0039CB);
+  static const _primary = Color(0xFF78A4CB);
+  static const _primaryDark = Color(0xFF5A86AD);
 
   @override
   void dispose() {
@@ -37,7 +39,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: _primaryDark),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.grey[100],
@@ -68,14 +70,47 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  void _register() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Pendaftaran berhasil! Silakan masuk.'),
+          content: Text('Anda harus menyetujui syarat & ketentuan.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    final result = await ApiService.register(
+      name: _nameController.text,
+      email: _emailController.text,
+      phone: _phoneController.text,
+      password: _passwordController.text,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result['message'] ?? 'Pendaftaran berhasil! Silakan masuk.',
+          ),
+          backgroundColor: Colors.green[700],
         ),
       );
       Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Pendaftaran gagal.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
     }
   }
 
@@ -218,7 +253,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _agreeToTerms ? _register : null,
+                        onPressed: _isLoading || !_agreeToTerms
+                            ? null
+                            : _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           foregroundColor: Colors.white,
@@ -228,13 +265,22 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Daftar',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'Daftar',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 24),

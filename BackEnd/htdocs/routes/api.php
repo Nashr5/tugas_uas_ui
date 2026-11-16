@@ -12,11 +12,19 @@ function registerApiRoutes(ProductController $controller, AuthController $authCo
     if ($segments === ['login'] && $method === 'GET') {
         $authController->setup();
     }
-    // POST /login - verifikasi kode 6 digit Google Authenticator.
+    // POST /login - login dengan email & password atau verifikasi 6 digit TOTP.
     if ($segments === ['login'] && $method === 'POST') {
         $authController->login();
     }
     if ($segments === ['login']) {
+        fail('Method not allowed.', 405);
+    }
+
+    // POST /register - pendaftaran akun baru ke database MySQL.
+    if ($segments === ['register'] && $method === 'POST') {
+        $authController->register();
+    }
+    if ($segments === ['register']) {
         fail('Method not allowed.', 405);
     }
 
