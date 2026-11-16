@@ -74,10 +74,10 @@ final class AuthController
     {
         $body = json_decode(file_get_contents('php://input'), true);
         if (!is_array($body)) {
-            fail('Request body harus berupa JSON yang valid.');
+            fail('Request body harus berupa JSON yang valid.', 400);
         }
 
-        // Login dengan Email & Password (Database MySQL)
+        // 1. Login dengan Email & Password (Database MySQL)
         if (isset($body['email'])) {
             if (!$this->pdo instanceof PDO) {
                 fail('Koneksi database tidak tersedia.', 500);
@@ -87,8 +87,10 @@ final class AuthController
             $password = (string) ($body['password'] ?? '');
 
             if ($email === '' || $password === '') {
-                fail('Email dan kata sandi wajib diisi.');
+                fail('Email dan kata sandi wajib diisi.', 400);
             }
+
+            $this->initialiseDatabase();
 
             $stmt = $this->pdo->prepare('SELECT id, name, email, phone, password FROM users WHERE email = :email LIMIT 1');
             $stmt->execute([':email' => $email]);
@@ -107,10 +109,10 @@ final class AuthController
             ]);
         }
 
-        // Login dengan Kode 6 Digit Google Authenticator
+        // 2. Login dengan Kode 6 Digit Google Authenticator (TOTP)
         $code = (string) ($body['code'] ?? '');
         if (!preg_match('/^\d{6}$/', $code)) {
-            fail('Kode otentikasi 6 digit atau email & kata sandi diperlukan.');
+            fail('Kode otentikasi 6 digit atau email & kata sandi diperlukan.', 400);
         }
 
         $valid = $this->google2fa->verifyKey(Config::google2faSecret(), $code, 1);
@@ -126,16 +128,13 @@ final class AuthController
 
     public function register(): void
     {
-        $body = json_decode(file_get_contents('php://input'), true);
-        if (!is_array($body)) {
-            fail('Invalid request body.', 400);
         if (!$this->pdo instanceof PDO) {
             fail('Koneksi database tidak tersedia.', 500);
         }
 
         $body = json_decode(file_get_contents('php://input'), true);
         if (!is_array($body)) {
-            fail('Request body harus berupa JSON yang valid.');
+            fail('Request body harus berupa JSON yang valid.', 400);
         }
 
         $name = trim((string) ($body['name'] ?? ''));
@@ -144,61 +143,50 @@ final class AuthController
         $password = (string) ($body['password'] ?? '');
 
         if ($name === '' || $email === '' || $password === '') {
-            fail('Name, email, and password are required.', 400);
+            fail('Nama, email, dan kata sandi wajib diisi.', 400);
         }
 
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            fail('Invalid email format.', 400);
+            fail('Format email tidak valid.', 400);
         }
 
         if (strlen($password) < 6) {
-            fail('Password must be at least 6 characters.', 400);
+            fail('Kata sandi minimal 6 karakter.', 400);
         }
 
         try {
-            // Koneksi langsung via PDO menggunakan environment Docker
-            $host = getenv('DB_HOST') ?: 'mysql';
-            $dbName = getenv('DB_DATABASE') ?: 'app';
-            $username = getenv('DB_USERNAME') ?: 'app';
-            $passwordDb = getenv('DB_PASSWORD') ?: 'app_secret';
-
-            $dsn = "mysql:host=$host;dbname=$dbName;charset=utf8mb4";
-            $db = new PDO($dsn, $username, $passwordDb, [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            ]);
-
-            // Buat tabel users secara otomatis jika belum tersedia
-            $db->exec(<<<'SQL'
-                CREATE TABLE IF NOT EXISTS users (
-                    id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                    name VARCHAR(255) NOT NULL,
-                    email VARCHAR(255) NOT NULL,
-                    phone VARCHAR(50) NULL,
-                    password VARCHAR(255) NOT NULL,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                    UNIQUE KEY users_email_unique (email)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-            SQL);
+            $this->initialiseDatabase();
 
             // Cek apakah email sudah terdaftar di database
-            $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
-            $stmt->execute([$email]);
+            $stmt = $this->pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
+            $stmt->execute([':email' => $email]);
             if ($stmt->fetch()) {
-                fail('Email is already registered.', 400);
+                fail('Email sudah terdaftar, silakan gunakan email lain.', 400);
             }
 
             // Enkripsi password menggunakan bcrypt
             $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
             // Simpan data ke tabel users
-            $insertStmt = $db->prepare('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)');
-            $insertStmt->execute([$name, $email, $phone, $hashedPassword]);
+            $insertStmt = $this->pdo->prepare(
+                'INSERT INTO users (name, email, phone, password) VALUES (:name, :email, :phone, :password)'
+            );
+            $insertStmt->execute([
+                ':name' => $name,
+                ':email' => $email,
+                ':phone' => $phone !== '' ? $phone : null,
+                ':password' => $hashedPassword,
+            ]);
 
             respond([
-                'status' => 'success',
+                'success' => true,
                 'message' => 'Pendaftaran berhasil! Silakan masuk.',
+                'user' => [
+                    'id' => (int) $this->pdo->lastInsertId(),
+                    'name' => $name,
+                    'email' => $email,
+                    'phone' => $phone,
+                ],
             ], 201);
         } catch (\Throwable $e) {
             fail('Database error: ' . $e->getMessage(), 500);

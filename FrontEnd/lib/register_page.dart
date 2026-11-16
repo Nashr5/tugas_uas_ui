@@ -4,8 +4,6 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-import 'api_service.dart';
-
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -26,7 +24,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   String get _baseUrl {
     if (kIsWeb) return 'http://localhost:8080';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
+    try {
+      if (Platform.isAndroid) return 'http://10.0.2.2:8080';
+    } catch (_) {}
     return 'http://localhost:8080';
   }
 
@@ -81,72 +81,71 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _register() async {
-  if (!_formKey.currentState!.validate()) {
-    return;
-  }
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
 
-  showDialog(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => const Center(
-      child: CircularProgressIndicator(),
-    ),
-  );
+    setState(() => _isLoading = true);
 
-  try {
-    final url = Uri.parse('$_baseUrl/register');
+    try {
+      final url = Uri.parse('$_baseUrl/register');
 
-    final response = await http.post(
-      url,
-      headers: {
-        'Content-Type': 'application/json; charset=UTF-8',
-      },
-      body: jsonEncode({
-        'name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
-        'phone': _phoneController.text.trim(),
-        'password': _passwordController.text.trim(),
-      }),
-    );
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'name': _nameController.text.trim(),
+              'email': _emailController.text.trim(),
+              'phone': _phoneController.text.trim(),
+              'password': _passwordController.text.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    if (!mounted) return;
+      final responseData = jsonDecode(response.body);
 
-    // Tutup loading dialog
-    Navigator.pop(context);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    final responseData = jsonDecode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Jika registrasi berhasil
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              responseData['message'] ?? 'Pendaftaran berhasil! Silakan masuk.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context); // Kembali ke halaman login
+      } else {
+        // Jika server mengembalikan pesan error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(responseData['message'] ?? 'Pendaftaran gagal!'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      // Jika registrasi berhasil
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(responseData['message'] ?? 'Pendaftaran berhasil! Silakan masuk.'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pop(context); // Kembali ke halaman login
-    } else {
-      // Jika server mengembalikan pesan error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(responseData['message'] ?? 'Pendaftaran gagal!'),
-          backgroundColor: Colors.red,
+          content: Text(
+            'Gagal terhubung ke server ($_baseUrl).\nPastikan Docker backend sudah aktif.',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
         ),
       );
     }
-  } catch (e) {
-    if (!mounted) return;
-    // Tutup loading dialog jika terjadi exception/error koneksi
-    Navigator.pop(context);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Terjadi kesalahan koneksi: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
   }
-}
 
   @override
   Widget build(BuildContext context) {
