@@ -1,4 +1,5 @@
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -68,16 +69,70 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  void _register() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _register() async {
+  if (!_formKey.currentState!.validate()) {
+    return;
+  }
+
+  showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => const Center(
+      child: CircularProgressIndicator(),
+    ),
+  );
+
+  try {
+    final url = Uri.parse('http://localhost:8080/register');
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode({
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'phone': _phoneController.text.trim(),
+        'password': _passwordController.text.trim(),
+      }),
+    );
+
+    // Tutup loading dialog
+    Navigator.pop(context);
+
+    final responseData = jsonDecode(response.body);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      // Jika registrasi berhasil
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pendaftaran berhasil! Silakan masuk.'),
+        SnackBar(
+          content: Text(responseData['message'] ?? 'Pendaftaran berhasil! Silakan masuk.'),
+          backgroundColor: Colors.green,
         ),
       );
-      Navigator.pop(context);
+      Navigator.pop(context); // Kembali ke halaman login
+    } else {
+      // Jika server mengembalikan pesan error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(responseData['message'] ?? 'Pendaftaran gagal!'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+  } catch (e) {
+    // Tutup loading dialog jika terjadi exception/error koneksi
+    Navigator.pop(context);
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Terjadi kesalahan koneksi: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

@@ -52,4 +52,64 @@ final class AuthController
             'message' => 'Authentication successful.',
         ]);
     }
+
+    public function register(): void
+    {
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($body)) {
+            fail('Invalid request body.', 400);
+        }
+
+        $name = trim((string) ($body['name'] ?? ''));
+        $email = trim((string) ($body['email'] ?? ''));
+        $phone = trim((string) ($body['phone'] ?? ''));
+        $password = (string) ($body['password'] ?? '');
+
+        if ($name === '' || $email === '' || $password === '') {
+            fail('Name, email, and password are required.', 400);
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            fail('Invalid email format.', 400);
+        }
+
+        if (strlen($password) < 6) {
+            fail('Password must be at least 6 characters.', 400);
+        }
+
+        try {
+            // Koneksi langsung via PDO menggunakan environment Docker
+            $host = getenv('DB_HOST') ?: 'mysql';
+            $dbName = getenv('DB_DATABASE') ?: 'app';
+            $username = getenv('DB_USERNAME') ?: 'app';
+            $passwordDb = getenv('DB_PASSWORD') ?: 'app_secret';
+
+            $dsn = "mysql:host=$host;dbname=$dbName;charset=utf8mb4";
+            $db = new PDO($dsn, $username, $passwordDb, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+
+            // Cek apakah email sudah terdaftar di database
+            $stmt = $db->prepare('SELECT id FROM users WHERE email = ?');
+            $stmt->execute([$email]);
+            if ($stmt->fetch()) {
+                fail('Email is already registered.', 400);
+            }
+
+            // Enkripsi password menggunakan bcrypt
+            $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+
+            // Simpan data ke tabel users
+            $insertStmt = $db->prepare('INSERT INTO users (name, email, phone, password) VALUES (?, ?, ?, ?)');
+            $insertStmt->execute([$name, $email, $phone, $hashedPassword]);
+
+            respond([
+                'status' => 'success',
+                'message' => 'Pendaftaran berhasil! Silakan masuk.',
+            ], 201);
+        } catch (\Throwable $e) {
+            fail('Database error: ' . $e->getMessage(), 500);
+        }
+    }
 }
