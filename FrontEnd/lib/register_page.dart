@@ -1,4 +1,7 @@
-
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -17,6 +20,15 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _obscureText = true;
   bool _agreeToTerms = false;
+  bool _isLoading = false;
+
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8080';
+    try {
+      if (Platform.isAndroid) return 'http://10.0.2.2:8080';
+    } catch (_) {}
+    return 'http://localhost:8080';
+  }
 
   static const _primary = Color(0xFF2962FF);
   static const _primaryDark = Color(0xFF0039CB);
@@ -37,7 +49,7 @@ class _RegisterPageState extends State<RegisterPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: _primaryDark),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.grey[100],
@@ -68,14 +80,70 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  void _register() {
-    if (_formKey.currentState!.validate()) {
+  Future<void> _register() async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final url = Uri.parse('$_baseUrl/register');
+
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json; charset=UTF-8',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'name': _nameController.text.trim(),
+              'email': _emailController.text.trim(),
+              'phone': _phoneController.text.trim(),
+              'password': _passwordController.text.trim(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final responseData = jsonDecode(response.body);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        // Jika registrasi berhasil
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              responseData['message'] ?? 'Pendaftaran berhasil! Silakan masuk.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context); // Kembali ke halaman login
+      } else {
+        // Jika server mengembalikan pesan error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(responseData['message'] ?? 'Pendaftaran gagal!'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Pendaftaran berhasil! Silakan masuk.'),
+        SnackBar(
+          content: Text(
+            'Gagal terhubung ke server ($_baseUrl).\nPastikan Docker backend sudah aktif.',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
         ),
       );
-      Navigator.pop(context);
     }
   }
 
@@ -218,7 +286,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     SizedBox(
                       height: 54,
                       child: ElevatedButton(
-                        onPressed: _agreeToTerms ? _register : null,
+                        onPressed: _isLoading || !_agreeToTerms
+                            ? null
+                            : _register,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           foregroundColor: Colors.white,
@@ -228,13 +298,22 @@ class _RegisterPageState extends State<RegisterPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Daftar',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'Daftar',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                     const SizedBox(height: 24),

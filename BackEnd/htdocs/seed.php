@@ -48,6 +48,30 @@ try {
     }
 
     $pdo->exec(<<<'SQL'
+        CREATE TABLE IF NOT EXISTS users (
+            id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(191) NOT NULL,
+            phone VARCHAR(50) NULL,
+            password VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            UNIQUE KEY users_email_unique (email)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    SQL);
+
+    $checkUser = (int) $pdo->query('SELECT COUNT(*) FROM users')->fetchColumn();
+    if ($checkUser === 0) {
+        $stmt = $pdo->prepare('INSERT INTO users (name, email, phone, password) VALUES (:name, :email, :phone, :password)');
+        $stmt->execute([
+            ':name' => 'Admin Belikita',
+            ':email' => 'admin@belikita.com',
+            ':phone' => '081234567890',
+            ':password' => password_hash('password123', PASSWORD_BCRYPT),
+        ]);
+    }
+
+    $pdo->exec(<<<'SQL'
         CREATE TABLE IF NOT EXISTS products (
             id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
             title VARCHAR(255) NOT NULL,

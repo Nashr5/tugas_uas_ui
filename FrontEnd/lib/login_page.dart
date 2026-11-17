@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
+import 'home_page2.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -13,16 +18,157 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscureText = true;
 
-  static const _primary = Color(0xFF2962FF);
-  static const _primaryDark = Color(0xFF0039CB);
+  bool _obscureText = true;
+  bool _isLoading = false;
+
+  // Warna tema
+  static const _primary = Color(0xFF78A4CB);
+  static const _primaryDark = Color(0xFF5A86AD);
+
+  // Alamat Backend (Otomatis mendeteksi Platform)
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8080';
+    try {
+      if (Platform.isAndroid) return 'http://10.0.2.2:8080'; // Android Emulator
+    } catch (_) {}
+    return 'http://localhost:8080'; // Windows / Linux / macOS
+  }
 
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Fungsi Login langsung ke Backend & Database MySQL
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    try {
+      final url = Uri.parse('$_baseUrl/login');
+      final response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: jsonEncode({
+              'email': email,
+              'password': password,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      final data = jsonDecode(response.body);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        // Berhasil mengambil & mencocokkan data dari database MySQL
+        final user = data['user'] ?? {};
+        final userName = user['name'] ?? 'Pengguna';
+
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 8),
+                Text('Berhasil Masuk'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Selamat datang, $userName!',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text('Email: ${user['email'] ?? email}'),
+                if (user['phone'] != null) Text('No. HP: ${user['phone']}'),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.shade200),
+                  ),
+                  child: const Text(
+                    'Data berhasil diverifikasi dari Database MySQL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primary,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => const HomePage()),
+                  );
+                },
+                child: const Text('Masuk ke Beranda'),
+              ),
+            ],
+          ),
+        );
+      } else {
+        // Gagal login (email atau password tidak cocok di database)
+        final errorMsg =
+            data['message'] ?? 'Email atau kata sandi tidak sesuai.';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Gagal terhubung ke backend ($_baseUrl).\nPastikan Docker backend sudah jalan.',
+          ),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   InputDecoration _inputDecoration({
@@ -32,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon),
+      prefixIcon: Icon(icon, color: _primaryDark),
       suffixIcon: suffix,
       filled: true,
       fillColor: Colors.grey[100],
@@ -58,14 +204,6 @@ class _LoginPageState extends State<LoginPage> {
         borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
       ),
     );
-  }
-
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      // Logika navigasi
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Berhasil masuk!')));
-    }
   }
 
   @override
@@ -98,7 +236,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Email
+                    // Input Email
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
@@ -118,7 +256,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Kata Sandi/Password
+                    // Input Kata Sandi
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscureText,
@@ -155,23 +293,11 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 8),
 
-                    // Tombol Masuk/Login
+                    // Tombol Masuk
                     SizedBox(
                       height: 54,
-                      child: ElevatedButton.icon(
-                        onPressed: _login,
-                        icon: const Icon(
-                          Icons.login_rounded,
-                          color: Colors.white,
-                        ),
-                        label: const Text(
-                          'Masuk',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
                           elevation: 0,
@@ -179,10 +305,37 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.login_rounded,
+                                    color: Colors.white,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Masuk',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ),
 
-                    // Pemisah
+                    const SizedBox(height: 20),
                     Row(
                       children: [
                         Expanded(child: Divider(color: Colors.grey[300])),
@@ -196,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
                         Expanded(child: Divider(color: Colors.grey[300])),
                       ],
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
 
                     // Tombol Google
                     SizedBox(
@@ -216,7 +369,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     const SizedBox(height: 28),
 
-                    // Navigasi Daftar
+                    // Link Daftar Akun
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
