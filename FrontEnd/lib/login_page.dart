@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'home_page.dart';
+import 'home_page2.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
