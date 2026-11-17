@@ -73,77 +73,11 @@ class _LoginPageState extends State<LoginPage> {
       setState(() => _isLoading = false);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        // Berhasil mengambil & mencocokkan data dari database MySQL
+        // Berhasil mencocokkan email & kata sandi dari database MySQL
         final user = data['user'] ?? {};
-        final userName = user['name'] ?? 'Pengguna';
-
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 28),
-                SizedBox(width: 8),
-                Text('Berhasil Masuk'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Selamat datang, $userName!',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text('Email: ${user['email'] ?? email}'),
-                if (user['phone'] != null) Text('No. HP: ${user['phone']}'),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: const Text(
-                    'Data berhasil diverifikasi dari Database MySQL',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primary,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const HomePage()),
-                  );
-                },
-                child: const Text('Masuk ke Beranda'),
-              ),
-            ],
-          ),
-        );
+        
+        // Lanjutkan ke Verifikasi 2 Langkah (2FA Google Authenticator)
+        _show2FaDialog(user: user is Map<String, dynamic> ? user : {});
       } else {
         // Gagal login (email atau password tidak cocok di database)
         final errorMsg =
@@ -169,6 +103,332 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
+  }
+
+  // Verifikasi 2 Langkah (Google Authenticator TOTP)
+  void _show2FaDialog({required Map<String, dynamic> user}) {
+    final otpController = TextEditingController();
+    bool isVerifying = false;
+    String? errorMessage;
+    String? setupSecret;
+    bool isLoadingSetup = false;
+    final userName = user['name'] ?? 'Pengguna';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalContext) => StatefulBuilder(
+        builder: (sheetContext, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 20,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Handle Bar
+                  Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Icon 2FA Shield
+                  Container(
+                    width: 62,
+                    height: 62,
+                    decoration: BoxDecoration(
+                      color: _primary.withAlpha(35),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.security_rounded,
+                      color: _primaryDark,
+                      size: 32,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+
+                  const Text(
+                    'Verifikasi 2 Langkah (2FA)',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Akun $userName terverifikasi di MySQL.\nMasukkan 6 digit kode dari Google Authenticator Anda.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Input 6 Digit OTP
+                  TextField(
+                    controller: otpController,
+                    keyboardType: TextInputType.number,
+                    maxLength: 6,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 10,
+                      color: _primaryDark,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '000000',
+                      hintStyle: TextStyle(
+                        color: Colors.grey[300],
+                        letterSpacing: 10,
+                      ),
+                      counterText: '',
+                      filled: true,
+                      fillColor: Colors.grey[50],
+                      contentPadding: const EdgeInsets.symmetric(vertical: 16),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: _primary, width: 2),
+                      ),
+                    ),
+                  ),
+
+                  if (errorMessage != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      errorMessage!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 20),
+
+                  // Tombol Verifikasi & Masuk
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: isVerifying
+                          ? null
+                          : () async {
+                              final code = otpController.text.trim();
+                              if (code.length != 6) {
+                                setModalState(() {
+                                  errorMessage =
+                                      'Kode harus terdiri dari 6 angka.';
+                                });
+                                return;
+                              }
+
+                              setModalState(() {
+                                isVerifying = true;
+                                errorMessage = null;
+                              });
+
+                              try {
+                                final response = await http
+                                    .post(
+                                      Uri.parse('$_baseUrl/login'),
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                      },
+                                      body: jsonEncode({'code': code}),
+                                    )
+                                    .timeout(const Duration(seconds: 10));
+
+                                final verifyData = jsonDecode(response.body);
+
+                                if (response.statusCode >= 200 &&
+                                    response.statusCode < 300) {
+                                  if (!mounted) return;
+                                  if (modalContext.mounted) {
+                                    Navigator.pop(modalContext);
+                                  }
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Verifikasi 2FA Berhasil! Selamat datang, $userName.',
+                                      ),
+                                      backgroundColor: Colors.green,
+                                      behavior: SnackBarBehavior.floating,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  );
+
+                                  // Buka Beranda
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const HomePage(),
+                                    ),
+                                  );
+                                } else {
+                                  setModalState(() {
+                                    isVerifying = false;
+                                    errorMessage = verifyData['message'] ??
+                                        'Kode otentikasi tidak valid atau sudah kedaluwarsa.';
+                                  });
+                                }
+                              } catch (e) {
+                                setModalState(() {
+                                  isVerifying = false;
+                                  errorMessage =
+                                      'Gagal terhubung ke server: $e';
+                                });
+                              }
+                            },
+                      child: isVerifying
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              'Verifikasi & Masuk',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // Bantuan Setup Key / QR Code
+                  if (setupSecret == null)
+                    TextButton.icon(
+                      icon: isLoadingSetup
+                          ? const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.key_rounded, size: 16),
+                      label: const Text(
+                        'Belum setup Authenticator? Lihat Setup Key',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      onPressed: isLoadingSetup
+                          ? null
+                          : () async {
+                              setModalState(() => isLoadingSetup = true);
+                              try {
+                                final res = await http
+                                    .get(Uri.parse('$_baseUrl/login'))
+                                    .timeout(const Duration(seconds: 8));
+                                if (res.statusCode == 200) {
+                                  final data = jsonDecode(res.body);
+                                  setModalState(() {
+                                    setupSecret = data['secret'] ?? '';
+                                    isLoadingSetup = false;
+                                  });
+                                } else {
+                                  setModalState(() => isLoadingSetup = false);
+                                }
+                              } catch (_) {
+                                setModalState(() => isLoadingSetup = false);
+                              }
+                            },
+                    )
+                  else
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade100),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.info_outline,
+                                  size: 16, color: _primaryDark),
+                              SizedBox(width: 6),
+                              Text(
+                                'Setup Key Google Authenticator:',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _primaryDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          SelectableText(
+                            setupSecret!,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.5,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Masukkan kunci di atas ke aplikasi Google Authenticator ("Enter a setup key") tipe Time-based.',
+                            style: TextStyle(
+                                fontSize: 10, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   InputDecoration _inputDecoration({
@@ -335,39 +595,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
 
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Expanded(child: Divider(color: Colors.grey[300])),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            'atau',
-                            style: TextStyle(color: Colors.grey[500]),
-                          ),
-                        ),
-                        Expanded(child: Divider(color: Colors.grey[300])),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Tombol Google
-                    SizedBox(
-                      height: 54,
-                      child: OutlinedButton.icon(
-                        onPressed: () {},
-                        icon: const Icon(Icons.g_mobiledata, size: 34),
-                        label: const Text('Lanjutkan dengan Google'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black87,
-                          side: BorderSide(color: Colors.grey.shade300),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
 
                     // Link Daftar Akun
                     Row(
