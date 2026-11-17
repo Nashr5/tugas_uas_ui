@@ -99,101 +99,124 @@ class _CatalogPageState extends State<CatalogPage> {
 
     final formKey = GlobalKey<FormState>();
 
-    await showDialog(
+        await showDialog(
       context: context,
       builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(isEdit ? 'Edit Produk' : 'Tambah Produk'),
-          content: SizedBox(
-            width: 400,
-            child: SingleChildScrollView(
-              child: Form(
-                key: formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _formField(titleController, 'Nama Produk', required: true),
-                    _formField(descriptionController, 'Deskripsi'),
-                    _formField(categoryController, 'Kategori'),
-                    _formField(
-                      priceController,
-                      'Harga',
-                      required: true,
-                      number: true,
+        bool isSubmitting = false; // <-- Tambahkan variabel ini
+
+        return StatefulBuilder(    // <-- Bungkus dengan StatefulBuilder
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(isEdit ? 'Edit Produk' : 'Tambah Produk'),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _formField(titleController, 'Nama Produk', required: true),
+                        _formField(descriptionController, 'Deskripsi'),
+                        _formField(categoryController, 'Kategori'),
+                        _formField(
+                          priceController,
+                          'Harga',
+                          required: true,
+                          number: true,
+                        ),
+                        _formField(
+                          stockController,
+                          'Stok',
+                          number: true,
+                        ),
+                        _formField(brandController, 'Merek'),
+                        _formField(thumbnailController, 'URL Gambar'),
+                      ],
                     ),
-                    _formField(
-                      stockController,
-                      'Stok',
-                      number: true,
-                    ),
-                    _formField(brandController, 'Merek'),
-                    _formField(thumbnailController, 'URL Gambar'),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Batal'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primary,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () async {
-                if (!formKey.currentState!.validate()) return;
+              actions: [
+                TextButton(
+                  onPressed: isSubmitting ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Batal'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          if (!formKey.currentState!.validate()) return;
 
-                final data = <String, dynamic>{
-                  'title': titleController.text.trim(),
-                  'description': descriptionController.text.trim(),
-                  'category': categoryController.text.trim(),
-                  'price': double.tryParse(priceController.text) ?? 0,
-                  'stock': int.tryParse(stockController.text) ?? 0,
-                  'brand': brandController.text.trim(),
-                  'thumbnail': thumbnailController.text.trim(),
-                };
+                          setDialogState(() {
+                            isSubmitting = true;
+                          });
 
-                try {
-                  if (isEdit) {
-                    await ApiService.updateProduct(
-                      int.parse(product['id'].toString()),
-                      data,
-                    );
-                  } else {
-                    await ApiService.addProduct(data);
-                  }
+                          final data = <String, dynamic>{
+                            'title': titleController.text.trim(),
+                            'description': descriptionController.text.trim(),
+                            'category': categoryController.text.trim(),
+                            'price': double.tryParse(priceController.text) ?? 0,
+                            'stock': int.tryParse(stockController.text) ?? 0,
+                            'brand': brandController.text.trim(),
+                            'thumbnail': thumbnailController.text.trim(),
+                          };
 
-                  if (!mounted) return;
+                          try {
+                            if (isEdit) {
+                              await ApiService.updateProduct(
+                                int.parse(product['id'].toString()),
+                                data,
+                              );
+                            } else {
+                              await ApiService.addProduct(data);
+                            }
 
-                  Navigator.pop(dialogContext);
-                  await loadProducts();
+                            Navigator.pop(dialogContext);
+                            await loadProducts();
 
-                  if (!mounted) return;
+                            if (!mounted) return;
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        isEdit
-                            ? 'Produk berhasil diperbarui!'
-                            : 'Produk berhasil ditambahkan!',
-                      ),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } catch (e) {
-                  if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isEdit
+                                      ? 'Produk berhasil diperbarui!'
+                                      : 'Produk berhasil ditambahkan!',
+                                ),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          } catch (e) {
+                            setDialogState(() {
+                              isSubmitting = false;
+                            });
 
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Gagal menyimpan produk: $e')),
-                  );
-                }
-              },
-              child: Text(isEdit ? 'Simpan' : 'Tambah'),
-            ),
-          ],
+                            if (!mounted) return;
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Gagal menyimpan produk: $e')),
+                            );
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(isEdit ? 'Simpan' : 'Tambah'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
