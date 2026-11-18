@@ -28,6 +28,30 @@ function registerApiRoutes(ProductController $controller, AuthController $authCo
         fail('Method not allowed.', 405);
     }
 
+    // POST /forgot-password - kirim kode OTP ke email user
+    if ($segments === ['forgot-password'] && $method === 'POST') {
+        $authController->forgotPassword();
+    }
+    if ($segments === ['forgot-password']) {
+        fail('Method not allowed.', 405);
+    }
+
+    // POST /verify-otp - validasi kode OTP
+    if ($segments === ['verify-otp'] && $method === 'POST') {
+        $authController->verifyOtp();
+    }
+    if ($segments === ['verify-otp']) {
+        fail('Method not allowed.', 405);
+    }
+
+    // POST /reset-password - atur ulang password baru
+    if ($segments === ['reset-password'] && $method === 'POST') {
+        $authController->resetPassword();
+    }
+    if ($segments === ['reset-password']) {
+        fail('Method not allowed.', 405);
+    }
+
     // GET / - halaman login.
     if ($segments === [] && $method === 'GET') {
         header('Content-Type: text/html; charset=utf-8');

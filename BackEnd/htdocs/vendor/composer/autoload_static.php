@@ -4,27 +4,45 @@
 
 namespace Composer\Autoload;
 
-class ComposerStaticInit0229362f466a16060058d180d11d028d
+class ComposerStaticInitc6b267de83dc85dbd5cfa100f50938ca
 {
     public static $prefixLengthsPsr4 = array (
-        'S' =>
+        'P' =>
         array (
-            'Sonata\\GoogleAuthenticator\\' => 27,
+            'PragmaRX\\Google2FA\\' => 19,
+            'ParagonIE\\ConstantTime\\' => 23,
+            'PHPMailer\\PHPMailer\\' => 20,
         ),
-        'G' =>
+        'D' =>
         array (
-            'Google\\Authenticator\\' => 21,
+            'DASPRiD\\Enum\\' => 13,
+        ),
+        'B' =>
+        array (
+            'BaconQrCode\\' => 12,
         ),
     );
 
     public static $prefixDirsPsr4 = array (
-        'Sonata\\GoogleAuthenticator\\' =>
+        'PragmaRX\\Google2FA\\' =>
         array (
-            0 => __DIR__ . '/..' . '/sonata-project/google-authenticator/src',
+            0 => __DIR__ . '/..' . '/pragmarx/google2fa/src',
         ),
-        'Google\\Authenticator\\' =>
+        'ParagonIE\\ConstantTime\\' =>
         array (
-            0 => __DIR__ . '/..' . '/sonata-project/google-authenticator/src',
+            0 => __DIR__ . '/..' . '/paragonie/constant_time_encoding/src',
+        ),
+        'PHPMailer\\PHPMailer\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/phpmailer/phpmailer/src',
+        ),
+        'DASPRiD\\Enum\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/dasprid/enum/src',
+        ),
+        'BaconQrCode\\' =>
+        array (
+            0 => __DIR__ . '/..' . '/bacon/bacon-qr-code/src',
         ),
     );
 
@@ -35,9 +53,9 @@ class ComposerStaticInit0229362f466a16060058d180d11d028d
     public static function getInitializer(ClassLoader $loader)
     {
         return \Closure::bind(function () use ($loader) {
-            $loader->prefixLengthsPsr4 = ComposerStaticInit0229362f466a16060058d180d11d028d::$prefixLengthsPsr4;
-            $loader->prefixDirsPsr4 = ComposerStaticInit0229362f466a16060058d180d11d028d::$prefixDirsPsr4;
-            $loader->classMap = ComposerStaticInit0229362f466a16060058d180d11d028d::$classMap;
+            $loader->prefixLengthsPsr4 = ComposerStaticInitc6b267de83dc85dbd5cfa100f50938ca::$prefixLengthsPsr4;
+            $loader->prefixDirsPsr4 = ComposerStaticInitc6b267de83dc85dbd5cfa100f50938ca::$prefixDirsPsr4;
+            $loader->classMap = ComposerStaticInitc6b267de83dc85dbd5cfa100f50938ca::$classMap;
 
         }, null, ClassLoader::class);
     }

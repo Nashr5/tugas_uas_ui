@@ -4,8 +4,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
-import 'home_page2.dart';
+import 'home_page.dart';
 import 'register_page.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -547,7 +548,20 @@ class _LoginPageState extends State<LoginPage> {
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: () async {
+                          final result = await Navigator.push<String>(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ForgotPasswordPage(
+                                initialEmail: _emailController.text.trim(),
+                              ),
+                            ),
+                          );
+                          if (result != null && result.isNotEmpty) {
+                            _emailController.text = result;
+                            _passwordController.clear();
+                          }
+                        },
                         child: const Text('Lupa Kata Sandi?'),
                       ),
                     ),

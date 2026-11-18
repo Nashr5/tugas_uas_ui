@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/Rest.php';
 require_once __DIR__ . '/Config.php';
 require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/services/Mailer.php';
 require_once __DIR__ . '/controller/AuthController.php';
 require_once __DIR__ . '/controller/ProductController.php';
 require_once __DIR__ . '/routes/api.php';

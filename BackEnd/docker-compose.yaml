@@ -19,6 +19,14 @@ services:
       GOOGLE2FA_ISSUER: ${GOOGLE2FA_ISSUER:-Belikita}
       GOOGLE2FA_ACCOUNT: ${GOOGLE2FA_ACCOUNT:-admin@belikita.com}
       GOOGLE2FA_SECRET: ${GOOGLE2FA_SECRET:-}
+      # Konfigurasi SMTP Email (OTP Lupa Kata Sandi)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-tls}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@belikita.com}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Belikita Support}
     depends_on:
       mysql:
         condition: service_healthy
