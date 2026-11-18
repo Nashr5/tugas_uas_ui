@@ -85,7 +85,7 @@ flutter run
 ---
 
 ## 🔑 Fitur Utama
-- **Autentikasi 2FA (Google Authenticator TOTP):** Pengamanan login menggunakan kode 6 digit berbasis waktu.
+- **Autentikasi 2FA (Google Authenticator TOTP):** Pengamanan login menggunakan kode 6 digit berbasis waktu. (buka dulu di localhost:8080 -> scan kode QR untuk google authenticator -> jalankan aplikasinya register akun -> login akun -> masukin kode google authenticator dari app mobile anda)
 - **Katalog & CRUD Produk:** Mengambil daftar produk, mencari produk, menambah, mengubah, dan menghapus item. *⚒ ON Proccess
 - **Database MySQL & phpMyAdmin:** Visualisasi dan manajemen data secara langsung lewat web interface.
 - **Cross-Platform UI:** Tampilan responsif modern menggunakan Flutter Material 3.
