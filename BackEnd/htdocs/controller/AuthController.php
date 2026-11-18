@@ -35,7 +35,16 @@ final class AuthController
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                 UNIQUE KEY users_email_unique (email)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+            CREATE TABLE IF NOT EXISTS password_resets (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(191) NOT NULL,
+                otp VARCHAR(6) NOT NULL,
+                expires_at DATETIME NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_email (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         SQL);
 
         // Tambahkan akun default jika belum ada data user sama sekali
@@ -191,5 +200,167 @@ final class AuthController
         } catch (\Throwable $e) {
             fail('Database error: ' . $e->getMessage(), 500);
         }
+    }
+
+    public function forgotPassword(): void
+    {
+        if (!$this->pdo instanceof PDO) {
+            fail('Koneksi database tidak tersedia.', 500);
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($body)) {
+            fail('Request body harus berupa JSON yang valid.', 400);
+        }
+
+        $email = trim((string) ($body['email'] ?? ''));
+        if ($email === '') {
+            fail('Email wajib diisi.', 400);
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            fail('Format email tidak valid.', 400);
+        }
+
+        $this->initialiseDatabase();
+
+        // Cari user berdasarkan email
+        $stmt = $this->pdo->prepare('SELECT id, name, email FROM users WHERE email = :email LIMIT 1');
+        $stmt->execute([':email' => $email]);
+        $user = $stmt->fetch();
+
+        if (!$user) {
+            fail('Email tidak terdaftar dalam sistem.', 404);
+        }
+
+        // Generate 6 digit OTP acak
+        $otp = (string) random_int(100000, 999999);
+
+        // Hapus kode OTP lama untuk email ini jika ada
+        $delStmt = $this->pdo->prepare('DELETE FROM password_resets WHERE email = :email');
+        $delStmt->execute([':email' => $email]);
+
+        // Simpan OTP baru ke database (berlaku 15 menit)
+        $insStmt = $this->pdo->prepare(
+            'INSERT INTO password_resets (email, otp, expires_at) VALUES (:email, :otp, DATE_ADD(NOW(), INTERVAL 15 MINUTE))'
+        );
+        $insStmt->execute([
+            ':email' => $email,
+            ':otp' => $otp,
+        ]);
+
+        // Kirim email OTP
+        $emailSent = Mailer::sendOtpEmail($email, (string) $user['name'], $otp);
+
+        respond([
+            'success' => true,
+            'message' => 'Kode OTP berhasil dikirim ke ' . $email . '. Silakan periksa kotak masuk atau folder spam email Anda.',
+            'email_sent' => $emailSent,
+        ]);
+    }
+
+    public function verifyOtp(): void
+    {
+        if (!$this->pdo instanceof PDO) {
+            fail('Koneksi database tidak tersedia.', 500);
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($body)) {
+            fail('Request body harus berupa JSON yang valid.', 400);
+        }
+
+        $email = trim((string) ($body['email'] ?? ''));
+        $otp = trim((string) ($body['otp'] ?? ''));
+
+        if ($email === '' || $otp === '') {
+            fail('Email dan kode OTP wajib diisi.', 400);
+        }
+
+        if (!preg_match('/^\d{6}$/', $otp)) {
+            fail('Kode OTP harus berupa 6 digit angka.', 400);
+        }
+
+        $this->initialiseDatabase();
+
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM password_resets WHERE email = :email AND otp = :otp AND expires_at > NOW() ORDER BY id DESC LIMIT 1'
+        );
+        $stmt->execute([':email' => $email, ':otp' => $otp]);
+        $record = $stmt->fetch();
+
+        if (!$record) {
+            fail('Kode OTP tidak valid atau telah kadaluarsa.', 400);
+        }
+
+        respond([
+            'success' => true,
+            'message' => 'Kode OTP valid.',
+        ]);
+    }
+
+    public function resetPassword(): void
+    {
+        if (!$this->pdo instanceof PDO) {
+            fail('Koneksi database tidak tersedia.', 500);
+        }
+
+        $body = json_decode(file_get_contents('php://input'), true);
+        if (!is_array($body)) {
+            fail('Request body harus berupa JSON yang valid.', 400);
+        }
+
+        $email = trim((string) ($body['email'] ?? ''));
+        $otp = trim((string) ($body['otp'] ?? ''));
+        $password = (string) ($body['password'] ?? '');
+        $passwordConfirmation = (string) ($body['password_confirmation'] ?? '');
+
+        if ($email === '' || $otp === '' || $password === '') {
+            fail('Email, kode OTP, dan kata sandi baru wajib diisi.', 400);
+        }
+
+        if (!preg_match('/^\d{6}$/', $otp)) {
+            fail('Kode OTP harus berupa 6 digit angka.', 400);
+        }
+
+        if (strlen($password) < 6) {
+            fail('Kata sandi baru minimal 6 karakter.', 400);
+        }
+
+        if ($passwordConfirmation !== '' && $password !== $passwordConfirmation) {
+            fail('Konfirmasi kata sandi tidak cocok.', 400);
+        }
+
+        $this->initialiseDatabase();
+
+        // Validasi OTP
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM password_resets WHERE email = :email AND otp = :otp AND expires_at > NOW() ORDER BY id DESC LIMIT 1'
+        );
+        $stmt->execute([':email' => $email, ':otp' => $otp]);
+        $record = $stmt->fetch();
+
+        if (!$record) {
+            fail('Kode OTP tidak valid atau telah kadaluarsa. Silakan minta kode baru.', 400);
+        }
+
+        // Update password user
+        $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
+        $updateStmt = $this->pdo->prepare(
+            'UPDATE users SET password = :password, updated_at = NOW() WHERE email = :email'
+        );
+        $updateStmt->execute([
+            ':password' => $hashedPassword,
+            ':email' => $email,
+        ]);
+
+        // Hapus kode OTP yang sudah digunakan
+        $delStmt = $this->pdo->prepare('DELETE FROM password_resets WHERE email = :email');
+        $delStmt->execute([':email' => $email]);
+
+        respond([
+            'success' => true,
+            'message' => 'Kata sandi Anda berhasil diperbarui! Silakan masuk dengan kata sandi baru.',
+        ]);
     }
 }

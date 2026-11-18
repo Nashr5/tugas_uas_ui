@@ -79,4 +79,50 @@ final class Config
     {
         return getenv('GOOGLE2FA_ISSUER') ?: 'Products API';
     }
+
+    public static function appEnv(): string
+    {
+        return getenv('APP_ENV') ?: 'local';
+    }
+
+    public static function isProduction(): bool
+    {
+        return self::appEnv() === 'production';
+    }
+
+    public static function smtpHost(): string
+    {
+        return getenv('SMTP_HOST') ?: '';
+    }
+
+    public static function smtpPort(): int
+    {
+        $port = getenv('SMTP_PORT');
+        return $port ? (int) $port : 587;
+    }
+
+    public static function smtpUser(): string
+    {
+        return getenv('SMTP_USER') ?: '';
+    }
+
+    public static function smtpPassword(): string
+    {
+        return getenv('SMTP_PASSWORD') ?: '';
+    }
+
+    public static function smtpEncryption(): string
+    {
+        return strtolower(getenv('SMTP_ENCRYPTION') ?: 'tls');
+    }
+
+    public static function smtpFromEmail(): string
+    {
+        return getenv('SMTP_FROM_EMAIL') ?: 'no-reply@belikita.com';
+    }
+
+    public static function smtpFromName(): string
+    {
+        return getenv('SMTP_FROM_NAME') ?: 'Belikita Support';
+    }
 }
